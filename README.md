@@ -1,11 +1,10 @@
 # FORM Movement Studio — Gym Slot Booking
 
 **Repository:** https://github.com/pragyatcodes/Gym-Slot-booking  
-**Live URL:** Not deployed (run locally with the setup below)
 
 Working booking app for a small studio: register/login, browse hourly sessions, book or join a waitlist, cancel, automatic FIFO promotion, check-in codes, and an admin console (create sessions, roster, check-in).
 
-This project was **AI-assisted**. If the brief requires unaided work, do not submit it as such.
+This project was **AI-assisted**
 
 The runnable app is in the `form-studio/` folder. On Render, set **Root Directory** to `form-studio`.
 
@@ -36,7 +35,7 @@ Do not commit `.env` or `gym.sqlite3`. `.gitignore` already ignores them.
 
 Reset demo data: stop the server and delete `gym.sqlite3` (and `-wal` / `-shm` if present).
 
-**Render https://gym-slot-booking-48wx.onrender.com/
+**Render** https://gym-slot-booking-48wx.onrender.com/
 ---
 
 ## Admin / member test credentials
