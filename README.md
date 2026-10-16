@@ -36,8 +36,7 @@ Do not commit `.env` or `gym.sqlite3`. `.gitignore` already ignores them.
 
 Reset demo data: stop the server and delete `gym.sqlite3` (and `-wal` / `-shm` if present).
 
-**Render (optional):** Build `pip install -r requirements.txt`. Start `gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 60 wsgi:app`. Env: `PYTHON_VERSION=3.13.5`, `DATABASE_PATH=/tmp/gym.sqlite3`. Do not set `PORT`. Root Directory: `form-studio`.
-
+**Render https://gym-slot-booking-48wx.onrender.com/
 ---
 
 ## Admin / member test credentials
