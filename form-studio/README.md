@@ -129,7 +129,7 @@ A local Git repository includes incremental implementation commits. No remote re
 
 ## Production limitations
 
-This is a functioning challenge/demo implementation, not a production service. Before public deployment: remove automatic demo login and public demo/admin credentials; provision real admins; use HTTPS and a production WSGI server; add rate limiting to login, registration and code lookup; introduce CSRF protection if switching to cookies; consider HttpOnly cookie sessions instead of tokens in localStorage to reduce XSS token exposure; add backups, structured monitoring and schema migrations. SQLite is appropriate for this single-instance studio; multiple API replicas would need a coordinated shared database, e.g. PostgreSQL with row locks. Polling is deliberately used instead of WebSockets. The visual fonts are loaded from Google Fonts with local sans-serif fallback; all functional assets are served locally.
+This is a functioning challenge/demo implementation, not a production service. Before public deployment: remove automatic demo login and public demo/admin credentials; provision real admins; use HTTPS and a production WSGI server; add rate limiting to login, registration and code lookup; introduce CSRF protection if switching to cookies; consider HttpOnly cookie sessions instead of tokens in localStorage to reduce XSS token exposure; add backups, structured monitoring and schema migrations. SQLite is appropriate for this single-instance studio; multiple API replicas would need a coordinated shared database, e.g. PostgreSQL with row locks. Polling is deliberately used instead of WebSockets. The interface uses a readable native system-font stack with no external font downloads. All visual and functional assets are served locally.
 
 ## Demo login / embedded-preview regression fix
 
@@ -140,3 +140,20 @@ With the server running, `node tests/demo_login.cjs` tests both demo roles, icon
 
 ### Authentication transport fix
 The preview logs showed a successful POST `/api/login` (200) immediately followed by GET `/api/sessions` and `/api/bookings` returning 401. To support proxies that consume or replace Authorization, the frontend now also sends the opaque token as `X-Form-Token`; authentication and logout use the same extraction function. This is not an authorization bypass: hashes, expiry, roles, ownership and revocation are checked exactly as before. HTML, JavaScript and API responses use `Cache-Control: no-store`, and the script version is bumped to prevent stale code. Browser regression tests now run four combinations of normal/blocked storage and preserved/stripped Authorization headers. All four pass, and the API regression verifies custom-header role checks, invalid-token rejection and revocation.
+
+
+## Dark theme and readability update
+
+`static/theme.css` applies the dark charcoal palette, high-contrast text, native system fonts, larger headings and controls, and single-column mobile session cards. It loads after the structural `style.css`. Login, registration, bookings, admin forms, tables and dialogs share the theme. Versioned asset URLs prevent older light-theme styles from being reused after deployment. Deploy all four files together: `static/index.html`, `static/style.css`, `static/theme.css`, and `static/app.js`. No database reset or environment-variable changes are needed.
+
+
+## Glass calendar (React)
+
+The Sessions page mounts a shadcn-style `GlassCalendar` from `components/ui/glass-calendar.tsx`.
+It is compiled with Vite into `static/calendar-assets/` so Render can keep using the Python start command.
+Weekly/monthly views, keyboard date movement, session counts, private browser notes, and admin “New session” are wired to the existing booking list. Rebuild with `npm install && npm run build` after editing the TypeScript source.
+
+
+## Metallic buttons
+
+Primary actions (sign in, demos, booking, create session, check-in, and calendar actions) use `components/ui/button-metallic.tsx`, a shadcn-style React button with a chrome rim. Supporting files live in `components/ui/button-metallic-utils/`. The compiled assets are in `static/calendar-assets/`. Rebuild with `npm install && npm run build` after editing the TypeScript source.

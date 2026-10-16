@@ -216,11 +216,53 @@ async function refresh(page) {
   }
 }
 function drawPage(page) {
+  if (window.FormCalendar) {
+    window.FormCalendar.unmountMetallics();
+    if (page !== "sessions") window.FormCalendar.unmount();
+  }
   if (page === "sessions") drawSessions();
   else if (page === "bookings") drawBookings();
   else drawAdmin();
 }
+
+function mountGlassCalendar() {
+  const host = document.getElementById("glass-calendar");
+  if (!host || !window.FormCalendar) return;
+  const counts = {};
+  allSessions.forEach((session) => {
+    const day = session.starts_at.slice(0, 10);
+    counts[day] = (counts[day] || 0) + 1;
+  });
+  const options = {
+    selectedDate,
+    today: serverTime.slice(0, 10),
+    sessionCounts: counts,
+    userId: user && user.id,
+    onDateSelect: (date) => {
+      if (date === selectedDate) {
+        drawSessionCards();
+        return;
+      }
+      selectedDate = date;
+      drawSessionCards();
+    },
+  };
+  if (user && user.role === "admin") {
+    options.onNewEvent = () => navigate("/admin");
+  } else {
+    options.onViewSessions = () => {
+      const cards = document.getElementById("sessionCards");
+      if (cards) cards.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+  }
+  window.FormCalendar.mount(host, options);
+}
+
 function drawSessions() {
+  if (window.FormCalendar) {
+    window.FormCalendar.unmountMetallics();
+    window.FormCalendar.unmount();
+  }
   const today = serverTime.slice(0, 10);
   const todays = allSessions.filter((s) => s.starts_at.startsWith(today));
   const upcoming = myBookings.filter(
@@ -231,34 +273,12 @@ function drawSessions() {
   ).length;
   $("#page").innerHTML =
     heading(
-      `Your next hour starts here.`,
-      `Find your flow. Book your mat. We’ll take care of the rest.`,
+      `Find your next session.`,
+      `Choose a session, reserve your mat, and make time to move.`,
     ) +
-    `<section class="hero"><img src="/static/studio.jpg" alt="Sunlight filling a peaceful studio with yoga mats"><div class="hero-copy"><div class="eyebrow">${icon("sun")} A LITTLE MOVEMENT, EVERY DAY</div><h2>Make room<br>for a better you.</h2><p>Good energy. Guided movement. Your own space.<br>One hour is all it takes.</p></div><div class="hero-badge">${icon("users")} Small groups. Real connection.</div></section><div class="stats"><div class="stat"><div class="stat-icon">${icon("calendar")}</div><div><div class="stat-label">Today’s sessions</div><strong>${todays.length.toString().padStart(2, "0")}</strong><small>A little something for everyone</small></div></div><div class="stat"><div class="stat-icon">${icon("ticket")}</div><div><div class="stat-label">Your upcoming bookings</div><strong>${upcoming.toString().padStart(2, "0")}</strong><small>Your mat is waiting</small></div></div><div class="stat"><div class="stat-icon">${icon("clock")}</div><div><div class="stat-label">On your waitlist</div><strong>${waiting.toString().padStart(2, "0")}</strong><small>We’ll save your place</small></div></div></div><section><div class="section-title"><div><h2>Find your next session</h2><p>A full hour for you. All sessions are limited to 20 mats.</p></div><span class="live"><i></i> Live availability</span></div><div class="schedule-tools"><div class="days">${Array.from(
-      { length: 7 },
-      (_, i) => {
-        const d = new Date(today + "T12:00:00");
-        d.setDate(d.getDate() + i);
-        const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        return `<button class="day ${ds === selectedDate ? "selected" : ""}" data-date="${ds}" aria-pressed="${ds === selectedDate}"><span>${i === 0 ? "Today" : d.toLocaleDateString("en-GB", { weekday: "short" })}</span><strong>${d.getDate()}</strong></button>`;
-      },
-    ).join(
-      "",
-    )}</div><div class="calendar-filter"><label for="dateFilter">CHOOSE A DATE</label><input id="dateFilter" type="date" value="${selectedDate}" aria-label="Filter sessions by date"></div></div><div class="filters">${["All sessions", "Yoga", "Strength", "Pilates", "HIIT", "Recovery"].map((k) => `<button class="chip ${filter === k ? "active" : ""}" data-filter="${k}" aria-pressed="${filter === k}">${k}</button>`).join("")}<span class="results-label" id="resultsLabel"></span></div><div class="cards" id="sessionCards"></div></section>` +
+    `<section class="hero"><img src="/static/studio.jpg" alt="Sunlight filling a peaceful studio with yoga mats"><div class="hero-copy"><div class="eyebrow">${icon("sun")} A LITTLE MOVEMENT, EVERY DAY</div><h2>Move well.<br>Feel better.</h2><p>Guided sessions. A welcoming community.<br>One hour, just for you.</p></div><div class="hero-badge">${icon("users")} Small groups. Real connection.</div></section><div class="stats"><div class="stat"><div class="stat-icon">${icon("calendar")}</div><div><div class="stat-label">Today’s sessions</div><strong>${todays.length.toString().padStart(2, "0")}</strong><small>Available on today’s schedule</small></div></div><div class="stat"><div class="stat-icon">${icon("ticket")}</div><div><div class="stat-label">Your upcoming bookings</div><strong>${upcoming.toString().padStart(2, "0")}</strong><small>Confirmed reservations</small></div></div><div class="stat"><div class="stat-icon">${icon("clock")}</div><div><div class="stat-label">On your waitlist</div><strong>${waiting.toString().padStart(2, "0")}</strong><small>Automatically booked when a mat opens</small></div></div></div><section><div class="section-title"><div><h2>Session schedule</h2><p>A full hour for you. All sessions are limited to 20 mats.</p></div><span class="live"><i></i> Live availability</span></div><div id="glass-calendar" class="glass-calendar-scope"></div><div class="filters">${["All sessions", "Yoga", "Strength", "Pilates", "HIIT", "Recovery"].map((k) => `<button class="chip ${filter === k ? "active" : ""}" data-filter="${k}" aria-pressed="${filter === k}">${k}</button>`).join("")}<span class="results-label" id="resultsLabel"></span></div><div class="cards" id="sessionCards"></div></section>` +
     footer();
-  document.querySelectorAll("[data-date]").forEach(
-    (b) =>
-      (b.onclick = () => {
-        selectedDate = b.dataset.date;
-        drawSessions();
-      }),
-  );
-  $("#dateFilter").onchange = (e) => {
-    if (e.target.value) {
-      selectedDate = e.target.value;
-      drawSessions();
-    }
-  };
+  mountGlassCalendar();
   document.querySelectorAll("[data-filter]").forEach(
     (b) =>
       (b.onclick = () => {
@@ -285,9 +305,7 @@ function drawSessionCards() {
   $("#sessionCards").innerHTML = rows.length
     ? rows.map(sessionCard).join("")
     : `<div class="empty">${icon("calendar")}<h3>A little breathing room</h3><p>No ${filter === "All sessions" ? "" : esc(filter.toLowerCase()) + " "}sessions on this date.<br>Try another day or explore a different session type.</p><button class="btn btn-secondary" onclick="filter='All sessions';selectedDate=serverTime.slice(0,10);drawSessions()">See today’s sessions</button></div>`;
-  document
-    .querySelectorAll("[data-book]")
-    .forEach((b) => (b.onclick = () => bookSession(Number(b.dataset.book))));
+  if (window.FormCalendar) window.FormCalendar.hydrateMetallics(document.getElementById("sessionCards") || document);
   document
     .querySelectorAll("[data-view-booking]")
     .forEach((b) => (b.onclick = () => navigate("/bookings")));
@@ -311,7 +329,7 @@ function sessionCard(s) {
   else if (own)
     button = `<button class="btn btn-booked" data-view-booking="${own.id}">${icon(own.status === "waitlisted" ? "clock" : "check")}${own.status === "waitlisted" ? `Waitlist · Position ${own.position}` : "You’re booked"}</button>`;
   else
-    button = `<button class="btn ${full ? "btn-secondary" : "btn-primary"}" data-book="${s.id}" ${pending.has(s.id) ? "disabled" : ""}>${pending.has(s.id) ? "Saving your place…" : full ? "Join waitlist" : "Book session"} ${icon(full ? "plus" : "arrow")}</button>`;
+    button = `<span class="metallic-host" data-metallic data-label="${pending.has(s.id) ? "Saving your place…" : full ? "Join waitlist" : "Book session"}" data-action="book" data-id="${s.id}" data-icon="${full ? "plus" : "arrow"}" ${pending.has(s.id) ? "data-disabled=\"true\"" : ""}></span>`;
   return `<article class="session-card ${s.started ? "past" : ""}"><div class="card-top"><span class="category ${esc(s.kind)}">${icon(s.kind === "Yoga" ? "leaf" : s.kind === "Recovery" ? "heart" : "sun")}${esc(s.kind)}</span><span class="duration">${icon("clock")} 60 min</span></div><h3>${esc(s.title)}</h3><div class="session-time">${timeRange(s.starts_at)}</div><div class="coach"><span class="mini-avatar">${esc(initials(s.coach))}</span> with ${esc(s.coach)}</div><div class="seat-line ${full ? "full" : low ? "low" : ""}"><strong>${full ? "All mats taken" : `${s.remaining} mats available`}</strong><span>${s.confirmed} / 20</span></div><div class="progress ${full ? "full" : low ? "low" : ""}"><div style="width:${(s.confirmed / 20) * 100}%"></div></div>${button}<div class="card-footer">${s.started ? "See you at the next one" : own?.status === "confirmed" ? "Your time. Your space." : full ? `${s.waitlist_count ? s.waitlist_count + " in line · " : ""}A spot opens? You’re next in line.` : low ? "A few mats left. Make one yours." : "Move at your own pace."}</div></article>`;
 }
 async function bookSession(id) {
@@ -354,7 +372,7 @@ function drawBookings() {
   );
   $("#page").innerHTML =
     heading(
-      "Your time. Already set aside.",
+      "Your bookings.",
       "Your sessions, your check-in codes, and a little something to look forward to.",
       "MY BOOKINGS",
     ) +
@@ -423,14 +441,15 @@ function drawAdmin() {
   const future = allSessions.filter((s) => s.starts_at > serverTime);
   $("#page").innerHTML =
     heading(
-      "A well-run studio. A good day.",
+      "Manage your studio.",
       "Create room to move, welcome your members, and keep every session in sync.",
       "STUDIO ADMIN",
     ) +
-    `<div class="admin-grid"><section class="panel"><h2>Create a session</h2><p>One hour, 20 mats. Times are in Asia/Kolkata (IST).</p><form id="createForm" novalidate><div class="field"><label for="title">Session name</label><input id="title" name="title" required maxlength="80" placeholder="e.g. Morning flow"><span class="field-error"></span></div><div class="field-row"><div class="field"><label for="sessionDate">Date</label><input type="date" id="sessionDate" name="date" value="${serverTime.slice(0, 10)}" min="${serverTime.slice(0, 10)}" required><span class="field-error"></span></div><div class="field"><label for="hour">Start hour</label><select name="hour" id="hour">${Array.from({ length: 24 }, (_, i) => `<option value="${String(i).padStart(2, "0")}" ${i === 9 ? "selected" : ""}>${String(i).padStart(2, "0")}:00</option>`).join("")}</select></div></div><div class="field-row"><div class="field"><label for="coach">Instructor</label><input name="coach" id="coach" required maxlength="80" placeholder="Instructor’s name"><span class="field-error"></span></div><div class="field"><label for="kind">Session type</label><select id="kind" name="kind">${["Yoga", "Strength", "Pilates", "HIIT", "Recovery"].map((k) => `<option>${k}</option>`).join("")}</select></div></div><p class="form-error" role="alert"></p><button class="btn btn-primary" type="submit">${icon("plus")} Create session</button></form></section><section class="panel"><h2>A warm welcome starts here</h2><p>Enter a member’s code to check them in. Codes work once, only during the session’s hour.</p><form id="checkinForm" novalidate><div class="field"><label for="checkCode">Check-in code</label><input id="checkCode" name="code" required minlength="8" maxlength="8" pattern="[A-Za-z2-9]{8}" placeholder="e.g. 7XKP2QAB" autocomplete="off" style="font-size:23px;letter-spacing:5px;text-transform:uppercase"><span class="field-error"></span></div><p class="form-error" role="alert"></p><button class="btn btn-primary" type="submit">${icon("check")} Check in member</button></form><div id="checkinResult" aria-live="polite"></div><div class="studio-note" style="margin:28px 0 0"><strong>${icon("shield")} Every mat, accounted for.</strong><p>Only confirmed bookings can check in. Cancelled codes are invalidated immediately.</p></div></section></div><section class="panel"><div class="section-title"><div><h2>Session roster</h2><p>Confirmed members, waitlist order, and attendance.</p></div><span class="live"><i></i> Live roster</span></div><label for="rosterSession" style="font-size:11px;color:#8b9780">Choose a session</label><select id="rosterSession" class="roster-select"><option value="">Select a session…</option>${allSessions.map((s) => `<option value="${s.id}" ${String(s.id) === String(rosterId) ? "selected" : ""}>${fmtDate(s.starts_at, { day: "numeric", month: "short" })} · ${fmtTime(s.starts_at)} · ${esc(s.title)} (${s.confirmed}/20)</option>`).join("")}</select><div id="roster"><div class="empty"><p>Select a session to see who’s joining.</p></div></div></section>` +
+    `<div class="admin-grid"><section class="panel"><h2>Create a session</h2><p>One hour, 20 mats. Times are in Asia/Kolkata (IST).</p><form id="createForm" novalidate><div class="field"><label for="title">Session name</label><input id="title" name="title" required maxlength="80" placeholder="e.g. Morning flow"><span class="field-error"></span></div><div class="field-row"><div class="field"><label for="sessionDate">Date</label><input type="date" id="sessionDate" name="date" value="${serverTime.slice(0, 10)}" min="${serverTime.slice(0, 10)}" required><span class="field-error"></span></div><div class="field"><label for="hour">Start hour</label><select name="hour" id="hour">${Array.from({ length: 24 }, (_, i) => `<option value="${String(i).padStart(2, "0")}" ${i === 9 ? "selected" : ""}>${String(i).padStart(2, "0")}:00</option>`).join("")}</select></div></div><div class="field-row"><div class="field"><label for="coach">Instructor</label><input name="coach" id="coach" required maxlength="80" placeholder="Instructor’s name"><span class="field-error"></span></div><div class="field"><label for="kind">Session type</label><select id="kind" name="kind">${["Yoga", "Strength", "Pilates", "HIIT", "Recovery"].map((k) => `<option>${k}</option>`).join("")}</select></div></div><p class="form-error" role="alert"></p><span class="metallic-host" data-metallic data-label="Create session" data-type="submit" data-icon="plus"></span></form></section><section class="panel"><h2>Check in a member</h2><p>Enter a member’s code to check them in. Codes work once, only during the session’s hour.</p><form id="checkinForm" novalidate><div class="field"><label for="checkCode">Check-in code</label><input id="checkCode" name="code" required minlength="8" maxlength="8" pattern="[A-Za-z2-9]{8}" placeholder="e.g. 7XKP2QAB" autocomplete="off" style="font-size:23px;letter-spacing:5px;text-transform:uppercase"><span class="field-error"></span></div><p class="form-error" role="alert"></p><span class="metallic-host" data-metallic data-label="Check in member" data-type="submit" data-icon="sparkles"></span></form><div id="checkinResult" aria-live="polite"></div><div class="studio-note" style="margin:28px 0 0"><strong>${icon("shield")} Every mat, accounted for.</strong><p>Only confirmed bookings can check in. Cancelled codes are invalidated immediately.</p></div></section></div><section class="panel"><div class="section-title"><div><h2>Session roster</h2><p>Confirmed members, waitlist order, and attendance.</p></div><span class="live"><i></i> Live roster</span></div><label for="rosterSession" style="font-size:11px;color:#8b9780">Choose a session</label><select id="rosterSession" class="roster-select"><option value="">Select a session…</option>${allSessions.map((s) => `<option value="${s.id}" ${String(s.id) === String(rosterId) ? "selected" : ""}>${fmtDate(s.starts_at, { day: "numeric", month: "short" })} · ${fmtTime(s.starts_at)} · ${esc(s.title)} (${s.confirmed}/20)</option>`).join("")}</select><div id="roster"><div class="empty"><p>Select a session to see who’s joining.</p></div></div></section>` +
     footer();
   $("#createForm").onsubmit = createSession;
   $("#checkinForm").onsubmit = checkin;
+  if (window.FormCalendar) window.FormCalendar.hydrateMetallics(document.getElementById("page"));
   $("#rosterSession").onchange = (e) => {
     rosterId = e.target.value;
     $("#roster").innerHTML = loadingUI();
@@ -541,8 +560,12 @@ async function updateRoster() {
 }
 function renderAuth(register = false) {
   clearInterval(polling);
+  if (window.FormCalendar) {
+    window.FormCalendar.unmountMetallics();
+    window.FormCalendar.unmount();
+  }
   $("#app").innerHTML =
-    `<div class="auth-layout"><section class="auth-story"><img src="/static/studio.jpg" alt="A calm, sunlit movement studio">${brand()}<div class="auth-quote"><h1>A little space.<br>A better you.</h1><p>Movement that meets you where you are.<br>Find your flow with the FORM community.</p></div></section><main class="auth-right"><div class="auth-box"><div class="eyebrow">YOUR NEXT HOUR STARTS HERE</div><h2>${register ? "Make yourself at home." : "Good to see you again."}</h2><p>${register ? "Join the studio. Your first feel-good hour is waiting." : "Sign in to make a little room for yourself."}</p><form id="authForm" novalidate>${register ? '<div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" placeholder="Your name" minlength="2" maxlength="80" required><span class="field-error"></span></div>' : ""}<div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254" required><span class="field-error"></span></div><div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="At least 8 characters" minlength="8" maxlength="128" required><span class="field-error"></span></div><p class="form-error" role="alert"></p><button type="submit" class="btn btn-primary">${register ? "Create your account" : "Sign in"} ${icon("arrow")}</button></form><div class="auth-switch">${register ? 'Already part of the studio? <a data-route href="/login">Sign in</a>' : 'New to FORM? <a data-route href="/register">Create an account</a>'}</div><div class="demo-box"><strong>Take a look around</strong><p>This is a working demo. Explore as a member or try the studio admin tools.</p><div class="demo-actions"><button class="btn" type="button" id="demoMember">Member demo ${icon("arrow")}</button><button class="btn" type="button" id="demoAdmin">Admin demo ${icon("arrow")}</button></div></div></div></main></div>`;
+    `<div class="auth-layout"><section class="auth-story"><img src="/static/studio.jpg" alt="A calm, sunlit movement studio">${brand()}<div class="auth-quote"><h1>A little space.<br>A better you.</h1><p>Movement that meets you where you are.<br>Find your flow with the FORM community.</p></div></section><main class="auth-right"><div class="auth-box"><div class="eyebrow">YOUR NEXT HOUR STARTS HERE</div><h2>${register ? "Create your account." : "Welcome back."}</h2><p>${register ? "Create an account to reserve your first session." : "Sign in to book sessions and manage your reservations."}</p><form id="authForm" novalidate>${register ? '<div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" placeholder="Your name" minlength="2" maxlength="80" required><span class="field-error"></span></div>' : ""}<div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254" required><span class="field-error"></span></div><div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="At least 8 characters" minlength="8" maxlength="128" required><span class="field-error"></span></div><p class="form-error" role="alert"></p><span class="metallic-host" data-metallic data-label="${register ? "Create your account" : "Sign in"}" data-type="submit" data-icon="arrow"></span></form><div class="auth-switch">${register ? 'Already part of the studio? <a data-route href="/login">Sign in</a>' : 'New to FORM? <a data-route href="/register">Create an account</a>'}</div><div class="demo-box"><strong>Take a look around</strong><p>This is a working demo. Explore as a member or try the studio admin tools.</p><div class="demo-actions"><span class="metallic-host" id="demoMember" data-metallic data-label="Member demo" data-action="demo-member" data-icon="arrow"></span><span class="metallic-host" id="demoAdmin" data-metallic data-label="Admin demo" data-action="demo-admin" data-icon="sparkles"></span></div></div></div></main></div>`;
   $("#authForm").onsubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -563,8 +586,20 @@ function renderAuth(register = false) {
       btn.disabled = false;
     }
   };
-  $("#demoMember").onclick = (e) => { e.preventDefault(); demoLogin("member", e.currentTarget); };
-  $("#demoAdmin").onclick = (e) => { e.preventDefault(); demoLogin("admin", e.currentTarget); };
+  if (window.FormCalendar) window.FormCalendar.hydrateMetallics(document.getElementById("app"));
+  bindMetallicClicks();
+}
+let metallicBound = false;
+function bindMetallicClicks() {
+  if (metallicBound) return;
+  metallicBound = true;
+  document.addEventListener("metallic-click", onMetallicClick);
+}
+function onMetallicClick(e) {
+  const action = e.detail && e.detail.action;
+  if (action === "demo-member") demoLogin("member", e.target);
+  if (action === "demo-admin") demoLogin("admin", e.target);
+  if (action === "book") bookSession(Number(e.detail.id));
 }
 function setAuth(d) {
   token = d.token;
@@ -578,11 +613,11 @@ function setAuth(d) {
 async function demoLogin(role, btn) {
   if (pending.has('demo-login')) return;
   pending.add('demo-login');
-  const buttons = [...document.querySelectorAll('#demoMember, #demoAdmin, #authForm button')];
+  const buttons = [...document.querySelectorAll('#demoMember button, #demoAdmin button, #authForm button')];
   buttons.forEach(button => button.disabled = true);
   const error = document.querySelector('#authForm .form-error');
   if (error) error.textContent = '';
-  if (btn) btn.textContent = 'Signing in…';
+  if (btn && btn.tagName === 'BUTTON') btn.textContent = 'Signing in…';
   try {
     const d = await api("/login", {
       method: "POST",
@@ -596,7 +631,7 @@ async function demoLogin(role, btn) {
   } catch (e) {
     toast(e.message, true);
     if (error) error.textContent = e.message;
-    if (btn) btn.textContent = role === 'admin' ? 'Admin demo' : 'Member demo';
+    if (btn && btn.tagName === 'BUTTON') btn.textContent = role === 'admin' ? 'Admin demo' : 'Member demo';
   } finally {
     pending.delete('demo-login');
     buttons.forEach(button => button.disabled = false);
