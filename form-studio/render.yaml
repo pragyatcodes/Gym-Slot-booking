@@ -1,0 +1,19 @@
+# Persistent SQLite needs a persistent disk, which requires a paid Render service.
+# Review Render's pricing before approving this Blueprint.
+services:
+  - type: web
+    name: form-studio
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 60 wsgi:app
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: DATABASE_PATH
+        value: /var/data/gym.sqlite3
+    disk:
+      name: studio-data
+      mountPath: /var/data
+      sizeGB: 1
