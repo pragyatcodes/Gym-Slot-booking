@@ -1,131 +1,97 @@
-# FORM Movement Studio
+# FORM Movement Studio — Gym Slot Booking
 
-Full-stack gym slot booking: register and log in, browse hourly sessions, book or waitlist, cancel, and (as staff) create sessions, view rosters, and check members in.
+**Repository:** https://github.com/pragyatcodes/Gym-Slot-booking  
+**Live URL:** Not deployed (run locally with the setup below)
 
-This implementation was **AI-assisted**. If your brief says “No AI”, do not submit it as unaided work.
+Working booking app for a small studio: register/login, browse hourly sessions, book or join a waitlist, cancel, automatic FIFO promotion, check-in codes, and an admin console (create sessions, roster, check-in).
 
-## Demo accounts
+This project was **AI-assisted**. If the brief requires unaided work, do not submit it as such.
 
-Password for all of these: `DemoPass123!`
+The runnable app is in the `form-studio/` folder. On Render, set **Root Directory** to `form-studio`.
 
-| Role | Email |
-| --- | --- |
-| Member | `alex@form.studio` |
-| Member | `jamie@form.studio` |
-| Admin | `admin@form.studio` |
+---
 
-First visit auto-signs in as Alex. Use the top-right logout icon, then **Member demo** / **Admin demo**, or register a new account.
+## Setup
 
-## Run locally
-
-Python 3.11+ (tested on 3.13). No database server and no frontend build are required to run — compiled UI assets are already in `static/`.
+**Need:** Python 3.11 or newer.
 
 ```sh
+cd form-studio
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python app.py
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open http://localhost:3000
 
-Optional environment variables (see `.env.example`; the app does not load `.env` by itself):
+Config uses **environment variables** only (no secrets in git). Copy `.env.example` if you want a local reminder. The app does **not** auto-load `.env` — export vars in your shell or set them on Render.
 
-| Variable | Default | Purpose |
+| Variable | Default | Meaning |
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP port |
-| `DATABASE_PATH` | `gym.sqlite3` | SQLite file |
+| `DATABASE_PATH` | `gym.sqlite3` | SQLite file (created and seeded on first run) |
 
-A new database is created and seeded on first start. Delete `gym.sqlite3` (and `-wal`/`-shm` files) to reset demo data.
+Do not commit `.env` or `gym.sqlite3`. `.gitignore` already ignores them.
 
-### Rebuild UI assets (only if you edit React/TypeScript)
+Reset demo data: stop the server and delete `gym.sqlite3` (and `-wal` / `-shm` if present).
 
-```sh
-npm install
-npm run build
-```
+**Render (optional):** Build `pip install -r requirements.txt`. Start `gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 60 wsgi:app`. Env: `PYTHON_VERSION=3.13.5`, `DATABASE_PATH=/tmp/gym.sqlite3`. Do not set `PORT`. Root Directory: `form-studio`.
 
-That writes `static/calendar-assets/`. Render does **not** need Node if you commit those files.
+---
 
-## Upload to GitHub
+## Admin / member test credentials
 
-1. Create an **empty** repository (no README / license / .gitignore).
-2. From this project folder:
+Password for **all** accounts: `DemoPass123!`
 
-```sh
-git init
-git add .
-git commit -m "Add FORM Movement Studio"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-git push -u origin main
-```
-
-Or restore the included history:
-
-```sh
-git clone history.bundle ../form-studio-repo
-cd ../form-studio-repo
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-git push -u origin main
-```
-
-Do not commit `.env`, `gym.sqlite3`, `.venv/`, or `node_modules/`.
-
-## Deploy on Render
-
-**Root Directory:** `form-studio` if the GitHub repo contains that folder; leave blank if `app.py` is at the repo root.
-
-| Setting | Value |
+| Role | Email |
 | --- | --- |
-| Runtime | Python |
-| Build | `pip install -r requirements.txt` |
-| Start | `gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 60 wsgi:app` |
-| Env `PYTHON_VERSION` | `3.13.5` |
-| Env `DATABASE_PATH` | `/tmp/gym.sqlite3` (free demo; data can reset) |
+| Member | `alex@form.studio` |
+| Member | `jamie@form.studio` |
+| Member (waitlist tests) | `member1@form.studio` |
+| Admin | `admin@form.studio` |
 
-Do **not** set `PORT`. Paid Blueprint (`render.yaml`) uses a disk at `/var/data` and `DATABASE_PATH=/var/data/gym.sqlite3` so bookings survive restarts — review Render pricing first.
+First visit auto-signs in as Alex. Log out (top-right arrow), then use **Member demo** / **Admin demo**, or register a new **member**. You cannot register as admin; admin is seeded only.
 
-## What you can do
+These are public demo accounts for marking, not production secrets.
 
-- Register (unique email, hashed password) and log in with a server token
-- Browse sessions by date; book if a mat is free; join a FIFO waitlist when full
-- One active booking per member per session; cancel or rebook future sessions only
-- Waitlist promotion on cancellation (transactional, capacity 20)
-- Check-in codes; admin consumes a code once during the session hour
-- Admin: create hourly sessions, roster, check-in
-- Dark UI, glass calendar, metallic actions, expanding profile card, custom cursor
+---
 
-## Design note
+## Stack / data-model note (10 lines)
 
-1. Flask serves the JSON API and the SPA from one origin.
-2. SQLite stores users, hashed tokens, sessions and bookings.
-3. Passwords use scrypt; tokens are SHA-256 digests, 7-day expiry.
-4. Unique session start times; capacity 20 enforced in the database.
-5. One active booking or waitlist row per member per session.
-6. `BEGIN IMMEDIATE` plus triggers guard the last seat.
-7. Cancel + FIFO promotion commit together.
-8. Live polling every 5s; the server remains the source of truth.
+1. Flask serves a JSON API and a vanilla JS SPA from one origin (no CORS split).
+2. SQLite stores users, hashed login tokens, sessions and bookings with foreign keys.
+3. Passwords use Werkzeug scrypt; opaque tokens are stored as SHA-256 digests (7-day expiry).
+4. Sessions are unique on-the-hour 60-minute slots; capacity is always 20 (database trigger).
+5. A partial unique index allows only one active booking or waitlist row per member per session.
+6. `BEGIN IMMEDIATE` serializes last-seat races; confirmed count cannot exceed 20.
+7. Cancel and FIFO waitlist promotion commit in one transaction; no promotion after start.
+8. Check-in codes are random, unique, one-use, and valid only during the session hour.
+9. Auth uses `Authorization: Bearer` and/or `X-Form-Token`; members see own bookings, admins see rosters.
+10. Five-second polling plus optimistic booking counts; the server remains authoritative.
 
-Times are **Asia/Kolkata (IST)**. Admins are seeded, never registered.
+---
 
-## Tests
+## Assumptions
 
-```sh
-python -m unittest discover -s tests -v
-```
+- Timezone is **Asia/Kolkata (IST)**. Stored times are local ISO-8601 in that zone. The server clock decides book / cancel / check-in.
+- One studio, one session per start hour, always 20 mats, always 60 minutes on the hour.
+- Registration always creates a **member**. Admins are created only by the seed, never by the register form.
+- Admins manage sessions and attendance; they do not book as members in this app.
+- One active booking means confirmed **or** waitlisted. After cancel, rebooking is allowed (new row and new code). Rejoining a waitlist goes to the end.
+- If a mat frees before a waitlist request arrives, the server confirms. If the last mat is taken before a book request, the API returns 409 so the member can waitlist on purpose.
+- Promotion is FIFO by booking id. Leaving a waitlist does not promote anyone. Book/cancel after start is rejected, so promotion cannot happen after start.
+- Check-in window includes the start and excludes the end. Codes are 8 unambiguous random characters. Cancelled codes do not work. Owner and admin roster can see codes.
+- Members may book different hours. No payments, emails, or quotas.
+- Auto-login as Alex is UI-only; every API still needs a real token.
 
-## Layout
+---
 
-```
-app.py                 Flask API, schema, seed
-wsgi.py                Production entry (Gunicorn)
-requirements.txt       Flask, Gunicorn
-static/                SPA, theme, images, compiled React
-components/ui/         shadcn-style React (calendar, buttons, profile, cursor)
-frontend/              Vite mount
-render.yaml            Optional paid Render Blueprint
-```
+## How to try it
 
-Demo credentials are public and not production secrets. Remove auto-login and rotate accounts before any real gym use.
+1. Open the app as Alex → pick a **future** day → **Book session** → see the code under **My bookings**.
+2. Join a **full** Pilates class (waitlist). Position shows on My bookings.
+3. Log out → **Admin demo** → create a future session, open a roster, check in a code during the session hour.
+4. Confirm rejects: member opening `/admin`, double-book same hour, check-in too early or reuse a code.
+
+Tests: `cd form-studio && python -m unittest discover -s tests -v`
