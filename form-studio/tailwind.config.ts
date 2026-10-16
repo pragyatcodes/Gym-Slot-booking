@@ -9,7 +9,10 @@ export default {
       colors: {
         foreground: "#f4f1ea",
         background: "#16181c",
-        muted: "#2a2e35",
+        muted: {
+          DEFAULT: "#2a2e35",
+          foreground: "#a8aea8",
+        },
         ring: "#e8c4a0",
       },
     },

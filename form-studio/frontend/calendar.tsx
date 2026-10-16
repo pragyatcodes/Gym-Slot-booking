@@ -3,6 +3,11 @@ import { createRoot, type Root } from "react-dom/client";
 import { ArrowUpRight, Plus, Sparkles } from "lucide-react";
 import { GlassCalendar } from "@/components/ui/glass-calendar";
 import MetallicButton from "@/components/ui/button-metallic";
+import ProfileCard from "@/components/ui/profile-card";
+import {
+  CustomCursor,
+  useCustomCursorContext,
+} from "@/components/ui/custom-cursor";
 import "@/styles/calendar.css";
 
 export interface CalendarMountOptions {
@@ -112,6 +117,64 @@ export function unmountMetallics() {
   metallicRoots.clear();
 }
 
+let profileRoot: Root | null = null;
+let profileHost: HTMLElement | null = null;
+
+export function mountProfile(
+  element: HTMLElement,
+  options: { name: string; role: string; imageSrc: string },
+) {
+  if (profileHost !== element) {
+    unmountProfile();
+    profileHost = element;
+    profileRoot = createRoot(element);
+  }
+  profileRoot?.render(
+    <div className="dark">
+      <ProfileCard
+        imageSrc={options.imageSrc}
+        name={options.name}
+        role={options.role}
+        className="justify-end"
+      />
+    </div>,
+  );
+}
+
+export function unmountProfile() {
+  profileRoot?.unmount();
+  profileRoot = null;
+  profileHost = null;
+}
+
+const HOVER_SELECTOR =
+  "a, button, [role='button'], [data-cursor], [data-metallic], .chip, .day, .nav-link, .session-card, .metallic-host, .profile-identity, #react-profile, .icon-button, label, select, summary";
+
+function CursorHoverBridge() {
+  const { setIsHovering } = useCustomCursorContext();
+  React.useEffect(() => {
+    const onOver = (event: PointerEvent) => {
+      const node = event.target as Element | null;
+      setIsHovering(Boolean(node?.closest?.(HOVER_SELECTOR)));
+    };
+    document.addEventListener("pointerover", onOver);
+    return () => document.removeEventListener("pointerover", onOver);
+  }, [setIsHovering]);
+  return null;
+}
+
+let cursorRoot: Root | null = null;
+
+export function mountCursor(element: HTMLElement) {
+  if (!cursorRoot) cursorRoot = createRoot(element);
+  cursorRoot.render(
+    <CustomCursor color="#ffab78" className="pointer-events-none">
+      <CursorHoverBridge />
+    </CustomCursor>,
+  );
+  document.documentElement.classList.add("custom-cursor-on");
+}
+
 export function hydrateMetallics(rootEl: ParentNode = document) {
   rootEl.querySelectorAll<HTMLElement>("[data-metallic]").forEach((el) => {
     mountMetallic(el, {
@@ -144,6 +207,9 @@ declare global {
       mountMetallic: typeof mountMetallic;
       hydrateMetallics: typeof hydrateMetallics;
       unmountMetallics: typeof unmountMetallics;
+      mountProfile: typeof mountProfile;
+      unmountProfile: typeof unmountProfile;
+      mountCursor: typeof mountCursor;
     };
   }
 }
@@ -155,5 +221,8 @@ if (typeof window !== "undefined") {
     mountMetallic,
     hydrateMetallics,
     unmountMetallics,
+    mountProfile,
+    unmountProfile,
+    mountCursor,
   };
 }

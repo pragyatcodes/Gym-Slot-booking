@@ -135,11 +135,23 @@ document.addEventListener("click", (e) => {
   }
 });
 window.addEventListener("hashchange", renderRoute);
+
+
+function mountProfileCard() {
+  const host = document.getElementById("react-profile");
+  if (!host || !window.FormCalendar || !window.FormCalendar.mountProfile) return;
+  window.FormCalendar.mountProfile(host, {
+    name: user.name,
+    role: user.role === "admin" ? "Admin" : "Member",
+    imageSrc: user.role === "admin" ? "/static/avatars/admin.jpg" : "/static/avatars/member.jpg",
+  });
+}
+
 function shell(page) {
   const count = myBookings.filter(
     (b) => b.status === "confirmed" && b.starts_at > serverTime,
   ).length;
-  return `<aside class="sidebar">${brand()}<div class="studio-label">MOVEMENT STUDIO</div><div class="nav-label">YOUR STUDIO</div><nav><a data-route class="nav-link ${page === "sessions" ? "active" : ""}" href="/sessions">${icon("grid")}<span>Sessions</span></a><a data-route class="nav-link ${page === "bookings" ? "active" : ""}" href="/bookings">${icon("ticket")}<span>My bookings</span>${count ? `<span class="nav-count">${count}</span>` : ""}</a>${user.role === "admin" ? `<a data-route class="nav-link ${page === "admin" ? "active" : ""}" href="/admin">${icon("settings")}<span>Studio admin</span></a>` : ""}</nav><div class="sidebar-bottom"><div class="studio-note">${icon("leaf")}<strong>A little space. A better you.</strong><p>One hour to move, reset,<br>and feel more like yourself.</p></div><div class="profile"><div class="avatar">${esc(initials(user.name))}</div><div><strong>${esc(user.name)}</strong><small>${user.email.endsWith("@form.studio") ? "Demo " + user.role : "Studio " + user.role}</small></div><button class="icon-button" id="logout" title="Sign out" aria-label="Sign out">${icon("logout")}</button></div></div></aside><main class="main"><header class="topbar"><div class="breadcrumb">Your studio <span> / &nbsp; ${page === "sessions" ? "Sessions" : page === "bookings" ? "My bookings" : "Studio admin"}</span></div><div class="mobile-brand">${brand()}</div><div class="top-right"><span><i class="open-dot"></i> ${user.email.endsWith("@form.studio") ? "Demo studio" : "Your movement studio"}</span><span style="color:#d9ddcf">|</span><div class="avatar" title="${esc(user.name)}">${esc(initials(user.name))}</div><button class="icon-button" id="topLogout" title="Sign out" aria-label="Sign out">${icon("logout")}</button></div></header><div class="content" id="page"></div></main>`;
+  return `<aside class="sidebar">${brand()}<div class="studio-label">MOVEMENT STUDIO</div><div class="nav-label">YOUR STUDIO</div><nav><a data-route class="nav-link ${page === "sessions" ? "active" : ""}" href="/sessions">${icon("grid")}<span>Sessions</span></a><a data-route class="nav-link ${page === "bookings" ? "active" : ""}" href="/bookings">${icon("ticket")}<span>My bookings</span>${count ? `<span class="nav-count">${count}</span>` : ""}</a>${user.role === "admin" ? `<a data-route class="nav-link ${page === "admin" ? "active" : ""}" href="/admin">${icon("settings")}<span>Studio admin</span></a>` : ""}</nav><div class="sidebar-bottom"><div class="studio-note">${icon("leaf")}<strong>A little space. A better you.</strong><p>One hour to move, reset,<br>and feel more like yourself.</p></div><div class="profile"><div class="profile-identity"><div class="avatar">${esc(initials(user.name))}</div><div><strong>${esc(user.name)}</strong><small>${user.role === "admin" ? "Admin" : "Member"}</small></div></div><button class="icon-button" id="logout" title="Sign out" aria-label="Sign out">${icon("logout")}</button></div></div></aside><main class="main"><header class="topbar"><div class="breadcrumb">Your studio <span> / &nbsp; ${page === "sessions" ? "Sessions" : page === "bookings" ? "My bookings" : "Studio admin"}</span></div><div class="mobile-brand">${brand()}</div><div class="top-right"><span><i class="open-dot"></i> ${user.email.endsWith("@form.studio") ? "Demo studio" : "Your movement studio"}</span><span style="color:#d9ddcf">|</span><div id="react-profile" class="react-profile-host"></div><button class="icon-button" id="topLogout" title="Sign out" aria-label="Sign out">${icon("logout")}</button></div></header><div class="content" id="page"></div></main>`;
 }
 function footer() {
   return `<footer class="footer"><span>${icon("leaf")} A little movement goes a long way.</span><span>20 mats. One community. &nbsp; · &nbsp; All times IST</span></footer>`;
@@ -175,9 +187,11 @@ async function renderRoute() {
       : path === "/admin"
         ? "admin"
         : "sessions";
+  if (window.FormCalendar && window.FormCalendar.unmountProfile) window.FormCalendar.unmountProfile();
   $("#app").innerHTML = shell(page);
   $("#logout").onclick = logout;
   $("#topLogout").onclick = logout;
+  mountProfileCard();
   $("#page").innerHTML = loadingUI();
   try {
     await loadData();
@@ -276,7 +290,7 @@ function drawSessions() {
       `Find your next session.`,
       `Choose a session, reserve your mat, and make time to move.`,
     ) +
-    `<section class="hero"><img src="/static/studio.jpg" alt="Sunlight filling a peaceful studio with yoga mats"><div class="hero-copy"><div class="eyebrow">${icon("sun")} A LITTLE MOVEMENT, EVERY DAY</div><h2>Move well.<br>Feel better.</h2><p>Guided sessions. A welcoming community.<br>One hour, just for you.</p></div><div class="hero-badge">${icon("users")} Small groups. Real connection.</div></section><div class="stats"><div class="stat"><div class="stat-icon">${icon("calendar")}</div><div><div class="stat-label">Today’s sessions</div><strong>${todays.length.toString().padStart(2, "0")}</strong><small>Available on today’s schedule</small></div></div><div class="stat"><div class="stat-icon">${icon("ticket")}</div><div><div class="stat-label">Your upcoming bookings</div><strong>${upcoming.toString().padStart(2, "0")}</strong><small>Confirmed reservations</small></div></div><div class="stat"><div class="stat-icon">${icon("clock")}</div><div><div class="stat-label">On your waitlist</div><strong>${waiting.toString().padStart(2, "0")}</strong><small>Automatically booked when a mat opens</small></div></div></div><section><div class="section-title"><div><h2>Session schedule</h2><p>A full hour for you. All sessions are limited to 20 mats.</p></div><span class="live"><i></i> Live availability</span></div><div id="glass-calendar" class="glass-calendar-scope"></div><div class="filters">${["All sessions", "Yoga", "Strength", "Pilates", "HIIT", "Recovery"].map((k) => `<button class="chip ${filter === k ? "active" : ""}" data-filter="${k}" aria-pressed="${filter === k}">${k}</button>`).join("")}<span class="results-label" id="resultsLabel"></span></div><div class="cards" id="sessionCards"></div></section>` +
+    `<section class="hero"><img src="/static/studio.jpg?v=7" alt="Strength, yoga and cardio sharing a sunlit warehouse gym"><div class="hero-copy"><div class="eyebrow">${icon("sun")} A LITTLE MOVEMENT, EVERY DAY</div><h2>Move well.<br>Feel better.</h2><p>Guided sessions. A welcoming community.<br>One hour, just for you.</p></div><div class="hero-badge">${icon("users")} Small groups. Real connection.</div></section><div class="stats"><div class="stat"><div class="stat-icon">${icon("calendar")}</div><div><div class="stat-label">Today’s sessions</div><strong>${todays.length.toString().padStart(2, "0")}</strong><small>Available on today’s schedule</small></div></div><div class="stat"><div class="stat-icon">${icon("ticket")}</div><div><div class="stat-label">Your upcoming bookings</div><strong>${upcoming.toString().padStart(2, "0")}</strong><small>Confirmed reservations</small></div></div><div class="stat"><div class="stat-icon">${icon("clock")}</div><div><div class="stat-label">On your waitlist</div><strong>${waiting.toString().padStart(2, "0")}</strong><small>Automatically booked when a mat opens</small></div></div></div><section><div class="section-title"><div><h2>Session schedule</h2><p>A full hour for you. All sessions are limited to 20 mats.</p></div><span class="live"><i></i> Live availability</span></div><div id="glass-calendar" class="glass-calendar-scope"></div><div class="filters">${["All sessions", "Yoga", "Strength", "Pilates", "HIIT", "Recovery"].map((k) => `<button class="chip ${filter === k ? "active" : ""}" data-filter="${k}" aria-pressed="${filter === k}">${k}</button>`).join("")}<span class="results-label" id="resultsLabel"></span></div><div class="cards" id="sessionCards"></div></section>` +
     footer();
   mountGlassCalendar();
   document.querySelectorAll("[data-filter]").forEach(
@@ -563,9 +577,10 @@ function renderAuth(register = false) {
   if (window.FormCalendar) {
     window.FormCalendar.unmountMetallics();
     window.FormCalendar.unmount();
+    if (window.FormCalendar.unmountProfile) window.FormCalendar.unmountProfile();
   }
   $("#app").innerHTML =
-    `<div class="auth-layout"><section class="auth-story"><img src="/static/studio.jpg" alt="A calm, sunlit movement studio">${brand()}<div class="auth-quote"><h1>A little space.<br>A better you.</h1><p>Movement that meets you where you are.<br>Find your flow with the FORM community.</p></div></section><main class="auth-right"><div class="auth-box"><div class="eyebrow">YOUR NEXT HOUR STARTS HERE</div><h2>${register ? "Create your account." : "Welcome back."}</h2><p>${register ? "Create an account to reserve your first session." : "Sign in to book sessions and manage your reservations."}</p><form id="authForm" novalidate>${register ? '<div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" placeholder="Your name" minlength="2" maxlength="80" required><span class="field-error"></span></div>' : ""}<div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254" required><span class="field-error"></span></div><div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="At least 8 characters" minlength="8" maxlength="128" required><span class="field-error"></span></div><p class="form-error" role="alert"></p><span class="metallic-host" data-metallic data-label="${register ? "Create your account" : "Sign in"}" data-type="submit" data-icon="arrow"></span></form><div class="auth-switch">${register ? 'Already part of the studio? <a data-route href="/login">Sign in</a>' : 'New to FORM? <a data-route href="/register">Create an account</a>'}</div><div class="demo-box"><strong>Take a look around</strong><p>This is a working demo. Explore as a member or try the studio admin tools.</p><div class="demo-actions"><span class="metallic-host" id="demoMember" data-metallic data-label="Member demo" data-action="demo-member" data-icon="arrow"></span><span class="metallic-host" id="demoAdmin" data-metallic data-label="Admin demo" data-action="demo-admin" data-icon="sparkles"></span></div></div></div></main></div>`;
+    `<div class="auth-layout"><section class="auth-story"><img src="/static/studio.jpg?v=7" alt="People lifting, practising yoga and running in a sunlit gym">${brand()}<div class="auth-quote"><h1>A little space.<br>A better you.</h1><p>Movement that meets you where you are.<br>Find your flow with the FORM community.</p></div></section><main class="auth-right"><div class="auth-box"><div class="eyebrow">YOUR NEXT HOUR STARTS HERE</div><h2>${register ? "Create your account." : "Welcome back."}</h2><p>${register ? "Create an account to reserve your first session." : "Sign in to book sessions and manage your reservations."}</p><form id="authForm" novalidate>${register ? '<div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" placeholder="Your name" minlength="2" maxlength="80" required><span class="field-error"></span></div>' : ""}<div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254" required><span class="field-error"></span></div><div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="At least 8 characters" minlength="8" maxlength="128" required><span class="field-error"></span></div><p class="form-error" role="alert"></p><span class="metallic-host" data-metallic data-label="${register ? "Create your account" : "Sign in"}" data-type="submit" data-icon="arrow"></span></form><div class="auth-switch">${register ? 'Already part of the studio? <a data-route href="/login">Sign in</a>' : 'New to FORM? <a data-route href="/register">Create an account</a>'}</div><div class="demo-box"><strong>Take a look around</strong><p>This is a working demo. Explore as a member or try the studio admin tools.</p><div class="demo-actions"><span class="metallic-host" id="demoMember" data-metallic data-label="Member demo" data-action="demo-member" data-icon="arrow"></span><span class="metallic-host" id="demoAdmin" data-metallic data-label="Admin demo" data-action="demo-admin" data-icon="sparkles"></span></div></div></div></main></div>`;
   $("#authForm").onsubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -676,4 +691,27 @@ async function boot() {
   }
   renderRoute();
 }
+(function startCursor() {
+  const host = document.getElementById("cursor-root");
+  if (window.FormCalendar && window.FormCalendar.mountCursor && host) {
+    window.FormCalendar.mountCursor(host);
+  }
+  document.documentElement.classList.add("custom-cursor-on");
+  const fallback = document.createElement("div");
+  fallback.id = "studio-cursor";
+  fallback.setAttribute("aria-hidden", "true");
+  fallback.style.cssText =
+    "position:fixed;left:0;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:#ffab78;border:1px solid #ffd3b0;box-shadow:0 0 18px rgba(255,171,120,.7);pointer-events:none;z-index:2147483647;";
+  document.body.appendChild(fallback);
+  window.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "touch") return;
+    fallback.style.left = event.clientX + "px";
+    fallback.style.top = event.clientY + "px";
+    const over = event.target && event.target.closest && event.target.closest("a, button, [role='button'], .chip, .session-card, .nav-link, .metallic-host, #react-profile");
+    fallback.style.width = over ? "42px" : "18px";
+    fallback.style.height = over ? "42px" : "18px";
+    fallback.style.margin = over ? "-21px 0 0 -21px" : "-9px 0 0 -9px";
+    fallback.style.background = over ? "rgba(255,171,120,.35)" : "#ffab78";
+  });
+})();
 boot();
