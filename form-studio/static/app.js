@@ -21,6 +21,8 @@ const icons = {
     '<path d="M20 5c-3-3-7-1-8 2-1-3-5-5-8-2-5 5 3 11 8 15 5-4 13-10 8-15Z"/>',
   settings:
     '<path d="m12 3 3 2 4 1v4l2 2-2 3v4h-4l-3 2-3-2H5v-4l-2-3 2-2V6l4-1Z"/><circle cx="12" cy="12" r="3"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+  'eye-off': '<path d="M3 3l18 18M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 3-3 3 3 0 0 0-.4-1.5M9.9 5.1A11 11 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-3.2 3.8M6.1 6.1A18 18 0 0 0 2 12s3.5 7 10 7a11 11 0 0 0 3.1-.4"/>',
 };
 function icon(n) {
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[n] || icons.sun}</svg>`;
@@ -580,7 +582,7 @@ function renderAuth(register = false) {
     if (window.FormCalendar.unmountProfile) window.FormCalendar.unmountProfile();
   }
   $("#app").innerHTML =
-    `<div class="auth-layout"><section class="auth-story"><img src="/static/studio.jpg?v=7" alt="People lifting, practising yoga and running in a sunlit gym">${brand()}<div class="auth-quote"><h1>A little space.<br>A better you.</h1><p>Movement that meets you where you are.<br>Find your flow with the FORM community.</p></div></section><main class="auth-right"><div class="auth-box"><div class="eyebrow">YOUR NEXT HOUR STARTS HERE</div><h2>${register ? "Create your account." : "Welcome back."}</h2><p>${register ? "Create an account to reserve your first session." : "Sign in to book sessions and manage your reservations."}</p><form id="authForm" novalidate>${register ? '<div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" placeholder="Your name" minlength="2" maxlength="80" required><span class="field-error"></span></div>' : ""}<div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254" required><span class="field-error"></span></div><div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="At least 8 characters" minlength="8" maxlength="128" required><span class="field-error"></span></div><p class="form-error" role="alert"></p><span class="metallic-host" data-metallic data-label="${register ? "Create your account" : "Sign in"}" data-type="submit" data-icon="arrow"></span></form><div class="auth-switch">${register ? 'Already part of the studio? <a data-route href="/login">Sign in</a>' : 'New to FORM? <a data-route href="/register">Create an account</a>'}</div><div class="demo-box"><strong>Take a look around</strong><p>This is a working demo. Explore as a member or try the studio admin tools.</p><div class="demo-actions"><span class="metallic-host" id="demoMember" data-metallic data-label="Member demo" data-action="demo-member" data-icon="arrow"></span><span class="metallic-host" id="demoAdmin" data-metallic data-label="Admin demo" data-action="demo-admin" data-icon="sparkles"></span></div></div></div></main></div>`;
+    `<div class="auth-layout"><section class="auth-story"><img src="/static/studio.jpg?v=7" alt="People lifting, practising yoga and running in a sunlit gym">${brand()}<div class="auth-quote"><h1>A little space.<br>A better you.</h1><p>Movement that meets you where you are.<br>Find your flow with the FORM community.</p></div></section><main class="auth-right"><div class="auth-box"><div class="eyebrow">YOUR NEXT HOUR STARTS HERE</div><h2>${register ? "Create your account." : "Welcome back."}</h2><p>${register ? "Create an account to reserve your first session." : "Sign in to book sessions and manage your reservations."}</p><form id="authForm" novalidate>${register ? '<div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" placeholder="Your name" minlength="2" maxlength="80" required><span class="field-error"></span></div>' : ""}<div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254" required><span class="field-error"></span></div><div class="field"><label for="password">Password</label><div class="password-wrap"><input id="password" name="password" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="At least 8 characters" minlength="8" maxlength="128" required><button type="button" class="password-toggle" id="togglePassword" aria-label="Show password" aria-pressed="false">${icon("eye")}</button></div><span class="field-error"></span></div><p class="form-error" role="alert"></p><span class="metallic-host" data-metallic data-label="${register ? "Create your account" : "Sign in"}" data-type="submit" data-icon="arrow"></span></form><div class="auth-switch">${register ? 'Already part of the studio? <a data-route href="/login">Sign in</a>' : 'New to FORM? <a data-route href="/register">Create an account</a>'}</div><div class="demo-box"><strong>Take a look around</strong><p>This is a working demo. Explore as a member or try the studio admin tools.</p><div class="demo-actions"><span class="metallic-host" id="demoMember" data-metallic data-label="Member demo" data-action="demo-member" data-icon="arrow"></span><span class="metallic-host" id="demoAdmin" data-metallic data-label="Admin demo" data-action="demo-admin" data-icon="sparkles"></span></div></div></div></main></div>`;
   $("#authForm").onsubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -603,6 +605,19 @@ function renderAuth(register = false) {
   };
   if (window.FormCalendar) window.FormCalendar.hydrateMetallics(document.getElementById("app"));
   bindMetallicClicks();
+  bindPasswordToggle();
+}
+function bindPasswordToggle() {
+  const input = $("#password");
+  const btn = $("#togglePassword");
+  if (!input || !btn) return;
+  btn.onclick = () => {
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    btn.setAttribute("aria-pressed", show ? "true" : "false");
+    btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    btn.innerHTML = icon(show ? "eye-off" : "eye");
+  };
 }
 let metallicBound = false;
 function bindMetallicClicks() {

@@ -99,7 +99,7 @@ export const GlassCalendar = React.forwardRef<HTMLDivElement, GlassCalendarProps
     };
 
     return (
-      <div ref={ref} className={cn('glass-calendar w-full rounded-3xl p-6 shadow-2xl overflow-hidden text-white', className)} {...props}>
+      <div ref={ref} className={cn('glass-calendar w-full rounded-2xl p-4 shadow-2xl overflow-hidden text-white', className)} {...props}>
         <div className="flex items-center justify-between gap-3">
           <div className="calendar-tabs inline-flex gap-1 rounded-xl p-1" role="group" aria-label="Calendar view">
             {(['weekly', 'monthly'] as const).map(option => (
@@ -120,10 +120,10 @@ export const GlassCalendar = React.forwardRef<HTMLDivElement, GlassCalendarProps
           </div>
         </div>
 
-        <div className="calendar-month-heading my-6 flex items-center justify-between gap-4">
+        <div className="calendar-month-heading my-3 flex items-center justify-between gap-3">
           <div>
             <div className="calendar-kicker">YOUR MOVEMENT CALENDAR</div>
-            <motion.h3 key={`${header}-${format(currentMonth, 'yyyy')}`} initial={reduceMotion ? false : { opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .2 }} className="text-4xl font-bold tracking-tight">
+            <motion.h3 key={`${header}-${format(currentMonth, 'yyyy')}`} initial={reduceMotion ? false : { opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .2 }} className="text-2xl font-bold tracking-tight">
               {header} <span className="calendar-year">{format(currentMonth, 'yyyy')}</span>
             </motion.h3>
           </div>
